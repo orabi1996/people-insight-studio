@@ -710,7 +710,7 @@ function Index() {
         <div className="page-head">
           <div>
             <div className="eyebrow">
-              <i className="live-dot" /> بيانات حية متزامنة · اليوم {new Date().toLocaleDateString("ar-EG", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              <i className="live-dot" /> بيانات حية متزامنة · اليوم {new Intl.DateTimeFormat("ar-SA-u-nu-latn", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date())}
             </div>
             <h1>لوحة الموارد البشرية التنفيذية</h1>
             <p>رؤية تحليلية شاملة للقوى العاملة، مؤشرات الحضور، حالات الموظفين، والقطاعات الوظيفية.</p>
@@ -760,7 +760,7 @@ function Index() {
           </button>
         </div>
 
-        {/* 1. Today's Attendance Snapshot Strip (Explicit Employee Counts) */}
+        {/* 1. Today's Attendance Snapshot Strip (Explicit Employee Counts in English) */}
         {visiblePanels.attendance && (
           <section className="attendance-strip">
             <div className="attendance-header">
@@ -768,7 +768,7 @@ function Index() {
                 <span>⏱</span> حالة الحضور والانصراف المباشرة لليوم
               </h3>
               <div className="meta">
-                <span>إجمالي القوة المجدولة: <b>{ATTENDANCE_TODAY.totalScheduled.toLocaleString("ar-EG")} موظف</b></span>
+                <span>إجمالي القوة المجدولة: <b>{ATTENDANCE_TODAY.totalScheduled.toLocaleString("en-US")} موظف</b></span>
                 <span>نسبة الحضور الإجمالية: <b className="positive">{ATTENDANCE_TODAY.presentRate}</b></span>
                 <span>آخر مزامنة للبصمة: <b>منذ 3 دقائق</b></span>
               </div>
@@ -779,7 +779,7 @@ function Index() {
                   <span className="att-card-label">حاضرون اليوم</span>
                   <span className="att-card-badge">على رأس العمل</span>
                 </div>
-                <div className="att-card-value">{ATTENDANCE_TODAY.present.toLocaleString("ar-EG")}</div>
+                <div className="att-card-value">{ATTENDANCE_TODAY.present.toLocaleString("en-US")}</div>
                 <div className="att-card-note">موظف حضر وسجل بصمة الدخول</div>
               </div>
 
@@ -788,7 +788,7 @@ function Index() {
                   <span className="att-card-label">غياب اليوم</span>
                   <span className="att-card-badge">غير متواجدين</span>
                 </div>
-                <div className="att-card-value">{ATTENDANCE_TODAY.absent.toLocaleString("ar-EG")}</div>
+                <div className="att-card-value">{ATTENDANCE_TODAY.absent.toLocaleString("en-US")}</div>
                 <div className="att-card-note">موظف بدون تسجيل حضور أو إجازة مسبقة</div>
               </div>
 
@@ -797,7 +797,7 @@ function Index() {
                   <span className="att-card-label">تأخير صباحي</span>
                   <span className="att-card-badge">تجاوز المهلة</span>
                 </div>
-                <div className="att-card-value">{ATTENDANCE_TODAY.late.toLocaleString("ar-EG")}</div>
+                <div className="att-card-value">{ATTENDANCE_TODAY.late.toLocaleString("en-US")}</div>
                 <div className="att-card-note">موظف سجل دخول بعد الوقت الرسمي</div>
               </div>
 
@@ -806,7 +806,7 @@ function Index() {
                   <span className="att-card-label">انصراف مبكر</span>
                   <span className="att-card-badge">قبل نهاية الدوام</span>
                 </div>
-                <div className="att-card-value">{ATTENDANCE_TODAY.early.toLocaleString("ar-EG")}</div>
+                <div className="att-card-value">{ATTENDANCE_TODAY.early.toLocaleString("en-US")}</div>
                 <div className="att-card-note">موظف مسجل خروج قبل موعد الانصراف</div>
               </div>
             </div>
@@ -849,7 +849,7 @@ function Index() {
                     <div className="prog-track">
                       <i style={{ width: `${(lvl.value / maxLevel) * 100}%`, background: lvl.color }} />
                     </div>
-                    <span className="prog-val">{lvl.value.toLocaleString("ar-EG")} <small className="text-muted text-xs">({lvl.pct})</small></span>
+                    <span className="prog-val">{lvl.value.toLocaleString("en-US")} <small className="text-muted text-xs">({lvl.pct})</small></span>
                   </div>
                 ))}
               </div>
@@ -868,7 +868,7 @@ function Index() {
                     <div className="prog-track">
                       <i style={{ width: `${(cat.value / 1120) * 100}%`, background: cat.color }} />
                     </div>
-                    <span className="prog-val">{cat.value.toLocaleString("ar-EG")} <small className="text-muted text-xs">({cat.pct})</small></span>
+                    <span className="prog-val">{cat.value.toLocaleString("en-US")} <small className="text-muted text-xs">({cat.pct})</small></span>
                   </div>
                 ))}
               </div>
@@ -887,7 +887,7 @@ function Index() {
                     <div className="prog-track">
                       <i style={{ width: `${(nat.value / maxNat) * 100}%`, background: nat.color }} />
                     </div>
-                    <span className="prog-val">{nat.value.toLocaleString("ar-EG")} <small className="text-muted text-xs">({nat.pct})</small></span>
+                    <span className="prog-val">{nat.value.toLocaleString("en-US")} <small className="text-muted text-xs">({nat.pct})</small></span>
                   </div>
                 ))}
               </div>
@@ -966,7 +966,7 @@ function Index() {
                     <div className="rank-track">
                       <i style={{ width: `${(r.value / maxRank) * 100}%` }} />
                     </div>
-                    <b>{r.value.toLocaleString("ar-EG")}</b>
+                    <b>{r.value.toLocaleString("en-US")}</b>
                   </div>
                 ))}
               </div>
@@ -1029,7 +1029,7 @@ function Index() {
                 <div className="bars">
                   {STAGES.map((s) => (
                     <div className="bar-col" key={s.name}>
-                      <span>{s.value.toLocaleString("ar-EG")}</span>
+                      <span>{s.value.toLocaleString("en-US")}</span>
                       <i style={{ height: `${(s.value / maxStage) * 72}%` }} />
                       <b>{s.name}</b>
                     </div>
