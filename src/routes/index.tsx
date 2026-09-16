@@ -110,8 +110,8 @@ function Index() {
   const [editing, setEditing] = useState(false);
   const [dark, setDark] = useState(false);
 
-  const maxRank = RANKS[0].value;
-  const maxStage = STAGES[0].value;
+  const maxRank = RANKS[0]!.value;
+  const maxStage = STAGES[0]!.value;
 
   return (
     <div className={`app${dark ? " hrms-dark" : ""}`} dir="rtl" lang="ar">
