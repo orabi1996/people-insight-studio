@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -8,12 +8,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "لوحة قيادة تحليلية للموارد البشرية: توزيع الموظفين حسب الفرع والقسم والقطاع والجنس مع مؤشرات ذكية وجداول تفصيلية.",
+          "لوحة قيادة تحليلية متقدمة للموارد البشرية: إحصائيات القوى العاملة، حالات الموظفين، الحضور والانصراف اليومي، وتوزيع المستويات والقطاعات والجنسيات.",
       },
       { property: "og:title", content: "لوحة الموارد البشرية التنفيذية" },
       {
         property: "og:description",
-        content: "رؤية موحدة للقوى العاملة عبر الفروع والأقسام والمستويات الوظيفية.",
+        content: "رؤية موحدة وشاملة للحضور، الأقسام، المستويات الوظيفية، القطاعات، والطلبات المعلقة.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -24,31 +24,140 @@ export const Route = createFileRoute("/")({
 
 const NAV = ["لوحة القيادة", "الموظفون", "الحضور", "الهيكل التنظيمي", "التقارير"];
 
-const FILTERS = [
-  { label: "الفرع", options: ["الكل", "الإدارة العامة", "المرحلة الثانوية", "المرحلة المتوسطة"] },
-  { label: "القسم", options: ["الكل", "الخدمات المساندة", "الإدارة العامة", "الدعم الفني"] },
-  { label: "القطاع", options: ["الكل", "إدارة المرحلة", "السكرتارية", "الصيانة"] },
-  { label: "المستوى الوظيفي", options: ["الكل", "إداريون", "دعم ومساندة", "تعليمي"] },
-  { label: "الجنس", options: ["الكل", "ذكر", "أنثى"] },
+// Attendance Today Data (Explicit Employee Counts)
+const ATTENDANCE_TODAY = {
+  present: 2185,
+  absent: 75,
+  late: 62,
+  early: 28,
+  totalScheduled: 2350,
+  presentRate: "93.0%",
+};
+
+// Employment Status KPIs
+const STATUS_KPIS = [
+  {
+    tone: "blue",
+    icon: "👥",
+    label: "إجمالي القوة العاملة",
+    value: "2,350",
+    delta: "↗ 8.4%",
+    note: "مقارنة بالشهر السابق",
+  },
+  {
+    tone: "green",
+    icon: "✓",
+    label: "الموظفون المفعلون",
+    value: "2,240",
+    delta: "95.3%",
+    note: "على رأس العمل حالياً",
+  },
+  {
+    tone: "rose",
+    icon: "✕",
+    label: "منتهي خدماتهم",
+    value: "85",
+    delta: "3.6%",
+    note: "خلال السنة الحالية",
+  },
+  {
+    tone: "amber",
+    icon: "⚠",
+    label: "موقوفون من المسيرات",
+    value: "25",
+    delta: "1.1%",
+    note: "يتطلب مراجعة فورية",
+  },
+  {
+    tone: "violet",
+    icon: "📋",
+    label: "الطلبات المعلقة",
+    value: "42",
+    delta: "معلق",
+    note: "بانتظار الاعتماد",
+  },
 ];
 
-const KPIS = [
-  { tone: "blue", icon: "👥", label: "إجمالي الموظفين", value: "2,350", delta: "↗ 8.4%", note: "مقارنة بالشهر السابق" },
-  { tone: "cyan", icon: "♂", label: "الموظفون الذكور", value: "1,520", delta: "↗ 5.2%", note: "65% من الإجمالي" },
-  { tone: "violet", icon: "♀", label: "الموظفات", value: "830", delta: "↗ 11.1%", note: "35% من الإجمالي" },
-  { tone: "green", icon: "▦", label: "الفروع والمدارس", value: "24", delta: "↗ 2", note: "وحدات نشطة" },
-  { tone: "amber", icon: "◇", label: "الأقسام التنظيمية", value: "37", delta: "↗ 4", note: "أقسام فعالة" },
+// Job Levels Distribution
+const JOB_LEVELS = [
+  { name: "إدارة عليا وتنفيذية", value: 120, pct: "5.1%", color: "#3f8cff" },
+  { name: "إدارة وسطى وقيادي", value: 280, pct: "11.9%", color: "#19a7bd" },
+  { name: "إشرافي ورؤساء أقسام", value: 450, pct: "19.1%", color: "#7b61d1" },
+  { name: "تخصصي وأخصائيين", value: 720, pct: "30.6%", color: "#26a879" },
+  { name: "تشغيلي ودعم ومساندة", value: 780, pct: "33.2%", color: "#efaa33" },
 ];
 
+// Job Categories Distribution
+const JOB_CATEGORIES = [
+  { name: "تعليمي / أكاديمي", value: 1120, pct: "47.7%", color: "#3f8cff" },
+  { name: "إداري ومالي", value: 540, pct: "23.0%", color: "#19a7bd" },
+  { name: "خدمات ومساندة", value: 400, pct: "17.0%", color: "#efaa33" },
+  { name: "تقني وهندسي", value: 290, pct: "12.3%", color: "#7b61d1" },
+];
+
+// Job Sectors Distribution
+const JOB_SECTORS = [
+  { name: "قطاع التعليم والمدارس", value: 1260, pct: "53.6%", classCode: "a" },
+  { name: "قطاع العمليات والمساندة", value: 510, pct: "21.7%", classCode: "b" },
+  { name: "قطاع الشؤون الإدارية والمالية", value: 380, pct: "16.2%", classCode: "c" },
+  { name: "قطاع التحول الرقمي والتقنية", value: 200, pct: "8.5%", classCode: "d" },
+];
+
+// Nationalities Distribution & Saudization
+const NATIONALITIES = [
+  { name: "سعودي (نسبة التوطين)", value: 1450, pct: "61.7%", color: "#26a879" },
+  { name: "مصري", value: 410, pct: "17.4%", color: "#3f8cff" },
+  { name: "أردني", value: 190, pct: "8.1%", color: "#19a7bd" },
+  { name: "هندي", value: 140, pct: "6.0%", color: "#7b61d1" },
+  { name: "سوري", value: 90, pct: "3.8%", color: "#efaa33" },
+  { name: "أخرى", value: 70, pct: "3.0%", color: "#75869a" },
+];
+
+// Pending Requests Breakdown
+const PENDING_REQUESTS = [
+  {
+    type: "طلبات إجازات",
+    count: 18,
+    desc: "إجازات سنوية، مرضية، واضطرارية",
+    icon: "✈",
+    action: "مراجعة",
+  },
+  {
+    type: "سلف وقروض مالية",
+    count: 9,
+    desc: "طلبات قروض وسلف بانتظار الاعتماد المالي",
+    icon: "💰",
+    action: "مراجعة",
+  },
+  {
+    type: "استئذان وتأخير",
+    count: 8,
+    desc: "طلبات خروج مؤقت وإذن تأخير صباحي",
+    icon: "⏱",
+    action: "مراجعة",
+  },
+  {
+    type: "خطابات تعريف وتعديل",
+    count: 7,
+    desc: "خطابات موجهة للبنوك والجهات الرسمية",
+    icon: "📄",
+    action: "مراجعة",
+  },
+];
+
+// Department Ranking
 const RANKS = [
   { name: "الخدمات المساندة", value: 1261 },
+  { name: "هيئة التدريس", value: 890 },
   { name: "الإدارة العامة", value: 665 },
   { name: "الدعم الفني", value: 230 },
-  { name: "إدارة المرحلة", value: 180 },
-  { name: "الصيانة", value: 140 },
+  { name: "إدارة المراحل", value: 180 },
+  { name: "الصيانة والتشغيل", value: 140 },
+  { name: "الموارد البشرية", value: 125 },
   { name: "السكرتارية", value: 110 },
 ];
 
+// Educational Stages
 const STAGES = [
   { name: "الثانوية", value: 1980 },
   { name: "المتوسطة", value: 1040 },
@@ -58,31 +167,155 @@ const STAGES = [
   { name: "الحضانة", value: 165 },
 ];
 
-const ROWS = [
-  ["الإدارة العامة", "الإدارة العامة", "إدارة المرحلة", "إداريون", "ذكر", "120"],
-  ["الإدارة العامة", "الإدارة العامة", "الدعم الفني", "إداريون", "ذكر", "95"],
-  ["الإدارة العامة", "الخدمات المساندة", "السكرتارية", "دعم ومساندة", "أنثى", "64"],
-  ["المرحلة الثانوية", "المرحلة الثانوية", "إدارة المرحلة", "إداريون", "ذكر", "180"],
+// Detailed Table Rows
+const INITIAL_ROWS = [
+  {
+    branch: "الإدارة العامة",
+    dept: "الإدارة العامة",
+    sector: "قطاع الشؤون الإدارية والمالية",
+    level: "إدارة عليا",
+    category: "إداري ومالي",
+    nationality: "سعودي",
+    gender: "ذكر",
+    status: "مفعل",
+    attendance: "حاضر",
+    count: "35",
+  },
+  {
+    branch: "المرحلة الثانوية",
+    dept: "هيئة التدريس",
+    sector: "قطاع التعليم والمدارس",
+    level: "تخصصي",
+    category: "تعليمي / أكاديمي",
+    nationality: "سعودي",
+    gender: "أنثى",
+    status: "مفعل",
+    attendance: "حاضر",
+    count: "140",
+  },
+  {
+    branch: "المرحلة المتوسطة",
+    dept: "هيئة التدريس",
+    sector: "قطاع التعليم والمدارس",
+    level: "تخصصي",
+    category: "تعليمي / أكاديمي",
+    nationality: "مصري",
+    gender: "ذكر",
+    status: "مفعل",
+    attendance: "متأخر",
+    count: "85",
+  },
+  {
+    branch: "الإدارة العامة",
+    dept: "الخدمات المساندة",
+    sector: "قطاع العمليات والمساندة",
+    level: "تشغيلي ودعم",
+    category: "خدمات ومساندة",
+    nationality: "هندي",
+    gender: "ذكر",
+    status: "مفعل",
+    attendance: "حاضر",
+    count: "120",
+  },
+  {
+    branch: "المرحلة الابتدائية",
+    dept: "هيئة التدريس",
+    sector: "قطاع التعليم والمدارس",
+    level: "إشرافي",
+    category: "تعليمي / أكاديمي",
+    nationality: "أردني",
+    gender: "أنثى",
+    status: "مفعل",
+    attendance: "حاضر",
+    count: "65",
+  },
+  {
+    branch: "الإدارة العامة",
+    dept: "الدعم الفني",
+    sector: "قطاع التحول الرقمي والتقنية",
+    level: "تخصصي",
+    category: "تقني وهندسي",
+    nationality: "سعودي",
+    gender: "ذكر",
+    status: "مفعل",
+    attendance: "حاضر",
+    count: "45",
+  },
+  {
+    branch: "الإدارة العامة",
+    dept: "الموارد البشرية",
+    sector: "قطاع الشؤون الإدارية والمالية",
+    level: "إدارة وسطى",
+    category: "إداري ومالي",
+    nationality: "سعودي",
+    gender: "أنثى",
+    status: "مفعل",
+    attendance: "حاضر",
+    count: "28",
+  },
+  {
+    branch: "الخدمات المساندة",
+    dept: "الصيانة والتشغيل",
+    sector: "قطاع العمليات والمساندة",
+    level: "تشغيلي ودعم",
+    category: "خدمات ومساندة",
+    nationality: "مصري",
+    gender: "ذكر",
+    status: "موقوف من المسير",
+    attendance: "غائب",
+    count: "12",
+  },
+  {
+    branch: "المرحلة الثانوية",
+    dept: "الإدارة المدرسية",
+    sector: "قطاع التعليم والمدارس",
+    level: "إدارة عليا",
+    category: "إداري ومالي",
+    nationality: "سعودي",
+    gender: "ذكر",
+    status: "منتهي الخدمة",
+    attendance: "غائب",
+    count: "8",
+  },
+  {
+    branch: "المرحلة المتوسطة",
+    dept: "الخدمات المساندة",
+    sector: "قطاع العمليات والمساندة",
+    level: "تشغيلي ودعم",
+    category: "خدمات ومساندة",
+    nationality: "هندي",
+    gender: "ذكر",
+    status: "مفعل",
+    attendance: "انصراف مبكر",
+    count: "14",
+  },
 ];
 
-const WIDGETS = [
-  { icon: "☷", name: "ترتيب أفقي" },
-  { icon: "◔", name: "مخطط دائري" },
-  { icon: "▥", name: "أعمدة" },
-  { icon: "⌁", name: "اتجاه زمني" },
-  { icon: "▦", name: "خريطة تنظيمية" },
-  { icon: "✦", name: "مؤشرات ذكية" },
-  { icon: "▤", name: "جدول تفصيلي" },
+const FILTERS_CONFIG = [
+  { key: "branch", label: "الفرع", options: ["الكل", "الإدارة العامة", "المرحلة الثانوية", "المرحلة المتوسطة", "المرحلة الابتدائية", "الخدمات المساندة"] },
+  { key: "dept", label: "القسم", options: ["الكل", "هيئة التدريس", "الخدمات المساندة", "الإدارة العامة", "الدعم الفني", "الموارد البشرية", "الصيانة والتشغيل"] },
+  { key: "sector", label: "القطاع", options: ["الكل", "قطاع التعليم والمدارس", "قطاع العمليات والمساندة", "قطاع الشؤون الإدارية والمالية", "قطاع التحول الرقمي والتقنية"] },
+  { key: "level", label: "المستوى الوظيفي", options: ["الكل", "إدارة عليا", "إدارة وسطى", "إشرافي", "تخصصي", "تشغيلي ودعم"] },
+  { key: "category", label: "الفئة الوظيفية", options: ["الكل", "تعليمي / أكاديمي", "إداري ومالي", "خدمات ومساندة", "تقني وهندسي"] },
+  { key: "nationality", label: "الجنسية", options: ["الكل", "سعودي", "مصري", "أردني", "هندي"] },
+  { key: "status", label: "الحالة الوظيفية", options: ["الكل", "مفعل", "منتهي الخدمة", "موقوف من المسير"] },
+  { key: "attendance", label: "حالة الحضور", options: ["الكل", "حاضر", "غائب", "متأخر", "انصراف مبكر"] },
 ];
 
-const LAYERS = [
-  "أكبر الأقسام من حيث عدد الموظفين",
-  "التوزيع حسب الجنس",
-  "توزيع الموظفين حسب المرحلة",
-  "اتجاه القوى العاملة",
-  "خريطة التوزيع التنظيمي",
-  "مؤشرات تحتاج الانتباه",
-  "تفاصيل الهيكل والموظفين",
+const AVAILABLE_PANELS = [
+  { id: "attendance", name: "شريط الحضور اللحظي لليوم", icon: "⏱" },
+  { id: "status", name: "حالات الموظفين والمسيرات", icon: "👥" },
+  { id: "levels", name: "توزيع المستويات الوظيفية", icon: "▥" },
+  { id: "categories", name: "توزيع الفئات الوظيفية", icon: "▦" },
+  { id: "sectors", name: "قطاعات الوظائف الحالية", icon: "☷" },
+  { id: "nationalities", name: "توزيع الجنسيات والتوطين", icon: "🌐" },
+  { id: "requests", name: "مركز الطلبات المعلقة", icon: "📋" },
+  { id: "departments", name: "أكبر الأقسام من حيث العدد", icon: "☷" },
+  { id: "gender", name: "التوزيع حسب الجنس", icon: "◔" },
+  { id: "stages", name: "توزيع الموظفين حسب المرحلة", icon: "▥" },
+  { id: "trend", name: "اتجاه القوى العاملة", icon: "⌁" },
+  { id: "insights", name: "مؤشرات تحتاج الانتباه", icon: "✦" },
+  { id: "table", name: "تفاصيل الهيكل والموظفين", icon: "▤" },
 ];
 
 function PanelHead({ title, sub, actions }: { title: string; sub: string; actions?: string[] }) {
@@ -110,17 +343,89 @@ function Index() {
   const [editing, setEditing] = useState(false);
   const [dark, setDark] = useState(false);
 
+  // Active Panels Visibility State
+  const [visiblePanels, setVisiblePanels] = useState<Record<string, boolean>>({
+    attendance: true,
+    status: true,
+    levels: true,
+    categories: true,
+    sectors: true,
+    nationalities: true,
+    requests: true,
+    departments: true,
+    gender: true,
+    stages: true,
+    trend: true,
+    insights: true,
+    table: true,
+  });
+
+  // Filter selections state
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({
+    branch: "الكل",
+    dept: "الكل",
+    sector: "الكل",
+    level: "الكل",
+    category: "الكل",
+    nationality: "الكل",
+    status: "الكل",
+    attendance: "الكل",
+  });
+
+  const togglePanel = (id: string) => {
+    setVisiblePanels((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleFilterChange = (key: string, value: string) => {
+    setSelectedFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    setSelectedFilters({
+      branch: "الكل",
+      dept: "الكل",
+      sector: "الكل",
+      level: "الكل",
+      category: "الكل",
+      nationality: "الكل",
+      status: "الكل",
+      attendance: "الكل",
+    });
+  };
+
+  // Filtered rows for the table
+  const filteredRows = useMemo(() => {
+    return INITIAL_ROWS.filter((row) => {
+      if (selectedFilters.branch !== "الكل" && row.branch !== selectedFilters.branch) return false;
+      if (selectedFilters.dept !== "الكل" && row.dept !== selectedFilters.dept) return false;
+      if (selectedFilters.sector !== "الكل" && row.sector !== selectedFilters.sector) return false;
+      if (selectedFilters.level !== "الكل" && row.level !== selectedFilters.level) return false;
+      if (selectedFilters.category !== "الكل" && row.category !== selectedFilters.category) return false;
+      if (selectedFilters.nationality !== "الكل" && row.nationality !== selectedFilters.nationality) return false;
+      if (selectedFilters.status !== "الكل" && row.status !== selectedFilters.status) return false;
+      if (selectedFilters.attendance !== "الكل" && row.attendance !== selectedFilters.attendance) return false;
+      return true;
+    });
+  }, [selectedFilters]);
+
+  const activeFiltersCount = useMemo(() => {
+    return Object.values(selectedFilters).filter((v) => v !== "الكل").length;
+  }, [selectedFilters]);
+
   const maxRank = RANKS[0]!.value;
   const maxStage = STAGES[0]!.value;
+  const maxLevel = JOB_LEVELS[JOB_LEVELS.length - 1]!.value;
+  const maxNat = NATIONALITIES[0]!.value;
 
   return (
     <div className={`app${dark ? " hrms-dark" : ""}`} dir="rtl" lang="ar">
+      {/* Top Header */}
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark">ES</div>
+          <div className="brand-mark">HR</div>
           <div>
             <strong>الحلول الخبرية</strong>
-            <span>نظام إدارة الموارد البشرية</span>
+            <span>نظام إدارة الموارد البشرية التنفيذي</span>
           </div>
         </div>
         <nav>
@@ -141,12 +446,13 @@ function Index() {
             <div className="avatar">AM</div>
             <div>
               <b>أحمد محمد</b>
-              <span>مدير النظام</span>
+              <span>مدير الموارد البشرية</span>
             </div>
           </div>
         </div>
       </header>
 
+      {/* Studio Drawer (Dashboard Customizer) */}
       <div className={`studio${open ? " open" : ""}`}>
         <div className="studio-rail">
           <button
@@ -154,6 +460,7 @@ function Index() {
             className="studio-main"
             onClick={() => setOpen((o) => !o)}
             aria-label="مصمم اللوحة"
+            title="تخصيص اللوحة"
           >
             ✦
           </button>
@@ -164,6 +471,7 @@ function Index() {
               setStudioTab("widgets");
               setOpen(true);
             }}
+            title="العناصر"
           >
             ⊞<span>العناصر</span>
           </button>
@@ -174,6 +482,7 @@ function Index() {
               setStudioTab("layers");
               setOpen(true);
             }}
+            title="الطبقات"
           >
             ☷<span>الطبقات</span>
           </button>
@@ -184,11 +493,12 @@ function Index() {
               setStudioTab("settings");
               setOpen(true);
             }}
+            title="الإعدادات"
           >
             ⚙<span>الإعدادات</span>
           </button>
           <div className="rail-spacer" />
-          <button type="button" onClick={() => setDark((d) => !d)}>
+          <button type="button" onClick={() => setDark((d) => !d)} title="تبديل المظهر">
             ◐<span>المظهر</span>
           </button>
         </div>
@@ -197,7 +507,7 @@ function Index() {
           <div className="drawer-head">
             <div>
               <b>مصمم لوحة المعلومات</b>
-              <span>7 عناصر في اللوحة</span>
+              <span>{Object.values(visiblePanels).filter(Boolean).length} عناصر نشطة</span>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="إغلاق">
               ×
@@ -207,15 +517,23 @@ function Index() {
           {studioTab === "widgets" && (
             <>
               <div className="searchbox">
-                ⌕ <input placeholder="ابحث عن عنصر..." />
+                ⌕ <input placeholder="ابحث عن ويدجت أو قسم..." />
               </div>
-              <div className="section-label">عناصر التحليل</div>
+              <div className="section-label">عناصر التحليل المتاحة</div>
               <div className="widget-list">
-                {WIDGETS.map((w) => (
-                  <button key={w.name} type="button">
+                {AVAILABLE_PANELS.map((w) => (
+                  <button
+                    key={w.id}
+                    type="button"
+                    onClick={() => togglePanel(w.id)}
+                    style={{
+                      borderColor: visiblePanels[w.id] ? "var(--blue)" : "var(--line)",
+                      background: visiblePanels[w.id] ? "#f4f8ff" : "var(--surface)",
+                    }}
+                  >
                     <i>{w.icon}</i>
                     <span>{w.name}</span>
-                    <small>+</small>
+                    <small>{visiblePanels[w.id] ? "✓" : "+"}</small>
                   </button>
                 ))}
               </div>
@@ -224,14 +542,19 @@ function Index() {
 
           {studioTab === "layers" && (
             <>
-              <div className="section-label">الطبقات</div>
+              <div className="section-label">طبقات اللوحة (إظهار / إخفاء)</div>
               <div className="layers">
-                {LAYERS.map((l, i) => (
-                  <div key={l}>
+                {AVAILABLE_PANELS.map((l, i) => (
+                  <div key={l.id} style={{ opacity: visiblePanels[l.id] ? 1 : 0.5 }}>
                     <span>{String(i + 1).padStart(2, "0")}</span>
-                    <b>{l}</b>
-                    <button type="button" aria-label="إخفاء">
-                      ◉
+                    <b>{l.name}</b>
+                    <button
+                      type="button"
+                      aria-label="تبديل الرؤية"
+                      onClick={() => togglePanel(l.id)}
+                      style={{ color: visiblePanels[l.id] ? "var(--blue)" : "#94a3b8" }}
+                    >
+                      {visiblePanels[l.id] ? "◉" : "○"}
                     </button>
                   </div>
                 ))}
@@ -248,7 +571,7 @@ function Index() {
                   <input defaultValue="لوحة الموارد البشرية التنفيذية" />
                 </label>
                 <label>
-                  فترة التحديث
+                  فترة التحديث التلقائي
                   <select defaultValue="5">
                     <option value="1">كل دقيقة</option>
                     <option value="5">كل 5 دقائق</option>
@@ -256,14 +579,14 @@ function Index() {
                   </select>
                 </label>
                 <label>
-                  الصلاحية
+                  الصلاحية ونطاق العرض
                   <select>
-                    <option>خاص بي</option>
-                    <option>القسم</option>
-                    <option>الجميع</option>
+                    <option>خاص بالإدارة العليا</option>
+                    <option>مديرو الموارد البشرية</option>
+                    <option>الجميع (عرض فقط)</option>
                   </select>
                 </label>
-                <button className="save-btn" type="button">
+                <button className="save-btn" type="button" onClick={() => setOpen(false)}>
                   حفظ الإعدادات
                 </button>
               </div>
@@ -271,8 +594,8 @@ function Index() {
           )}
 
           <div className="drawer-note">
-            <b>وضع التصميم</b>
-            <p>فعّل التعديل لتحريك العناصر وتخصيص اللوحة.</p>
+            <b>وضع التصميم والتحريك</b>
+            <p>فعّل التعديل لإعادة ترتيب العناصر وتخصيص حجم اللوحات.</p>
             <label>
               <input type="checkbox" checked={editing} onChange={(e) => setEditing(e.target.checked)} />
               <span />
@@ -281,14 +604,16 @@ function Index() {
         </div>
       </div>
 
+      {/* Main Dashboard Workspace */}
       <main className="main">
+        {/* Page Header */}
         <div className="page-head">
           <div>
             <div className="eyebrow">
-              <i className="live-dot" /> بيانات حية · تم التحديث 10:46 ص
+              <i className="live-dot" /> بيانات حية متزامنة · اليوم {new Date().toLocaleDateString("ar-EG", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
             <h1>لوحة الموارد البشرية التنفيذية</h1>
-            <p>رؤية موحدة للقوى العاملة عبر الفروع والأقسام والمستويات الوظيفية.</p>
+            <p>رؤية تحليلية شاملة للقوى العاملة، مؤشرات الحضور، حالات الموظفين، والقطاعات الوظيفية.</p>
           </div>
           <div className="page-actions">
             <button
@@ -301,273 +626,486 @@ function Index() {
             >
               ✎ {editing ? "إنهاء التخصيص" : "تخصيص اللوحة"}
             </button>
-            <button type="button">⇩ تصدير</button>
-            <button type="button" className="primary">
-              ＋ لوحة جديدة
+            <button type="button" onClick={() => window.print()}>
+              ⇩ تصدير التقرير
+            </button>
+            <button type="button" className="primary" onClick={() => setOpen(true)}>
+              ＋ إضافة ويدجت
             </button>
           </div>
         </div>
 
-        <div className="filters">
+        {/* Global Filter Bar */}
+        <div className="filters" style={{ gridTemplateColumns: "auto repeat(8, minmax(100px, 1fr)) auto" }}>
           <button className="filter-main" type="button">
-            ☷ الفلاتر <span>5</span>
+            ☷ الفلاتر <span>{activeFiltersCount}</span>
           </button>
-          {FILTERS.map((f) => (
-            <label key={f.label}>
+          {FILTERS_CONFIG.map((f) => (
+            <label key={f.key}>
               <span>{f.label}</span>
-              <select>
+              <select
+                value={selectedFilters[f.key]}
+                onChange={(e) => handleFilterChange(f.key, e.target.value)}
+              >
                 {f.options.map((o) => (
-                  <option key={o}>{o}</option>
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
                 ))}
               </select>
             </label>
           ))}
-          <button className="reset" type="button" aria-label="إعادة ضبط">
+          <button className="reset" type="button" onClick={resetFilters} title="إعادة ضبط الفلاتر" aria-label="إعادة ضبط">
             ↻
           </button>
         </div>
 
-        <div className="kpis">
-          {KPIS.map((k) => (
-            <div key={k.label} className={`kpi ${k.tone}`}>
-              <div className="kpi-top">
-                <div className="kpi-icon">{k.icon}</div>
-                <div className="kpi-more">•••</div>
-              </div>
-              <div className="kpi-label">{k.label}</div>
-              <div className="kpi-value">{k.value}</div>
-              <div className="kpi-foot">
-                <span className="positive">{k.delta}</span>
-                <span>{k.note}</span>
+        {/* 1. Today's Attendance Snapshot Strip (Explicit Employee Counts) */}
+        {visiblePanels.attendance && (
+          <section className="attendance-strip">
+            <div className="attendance-header">
+              <h3>
+                <span>⏱</span> حالة الحضور والانصراف المباشرة لليوم
+              </h3>
+              <div className="meta">
+                <span>إجمالي القوة المجدولة: <b>{ATTENDANCE_TODAY.totalScheduled.toLocaleString("ar-EG")} موظف</b></span>
+                <span>نسبة الحضور الإجمالية: <b className="positive">{ATTENDANCE_TODAY.presentRate}</b></span>
+                <span>آخر مزامنة للبصمة: <b>منذ 3 دقائق</b></span>
               </div>
             </div>
-          ))}
-        </div>
+            <div className="attendance-grid">
+              <div className="att-card present">
+                <div className="att-card-top">
+                  <span className="att-card-label">حاضرون اليوم</span>
+                  <span className="att-card-badge">على رأس العمل</span>
+                </div>
+                <div className="att-card-value">{ATTENDANCE_TODAY.present.toLocaleString("ar-EG")}</div>
+                <div className="att-card-note">موظف حضر وسجل بصمة الدخول</div>
+              </div>
 
+              <div className="att-card absent">
+                <div className="att-card-top">
+                  <span className="att-card-label">غياب اليوم</span>
+                  <span className="att-card-badge">غير متواجدين</span>
+                </div>
+                <div className="att-card-value">{ATTENDANCE_TODAY.absent.toLocaleString("ar-EG")}</div>
+                <div className="att-card-note">موظف بدون تسجيل حضور أو إجازة مسبقة</div>
+              </div>
+
+              <div className="att-card late">
+                <div className="att-card-top">
+                  <span className="att-card-label">تأخير صباحي</span>
+                  <span className="att-card-badge">تجاوز المهلة</span>
+                </div>
+                <div className="att-card-value">{ATTENDANCE_TODAY.late.toLocaleString("ar-EG")}</div>
+                <div className="att-card-note">موظف سجل دخول بعد الوقت الرسمي</div>
+              </div>
+
+              <div className="att-card early">
+                <div className="att-card-top">
+                  <span className="att-card-label">انصراف مبكر</span>
+                  <span className="att-card-badge">قبل نهاية الدوام</span>
+                </div>
+                <div className="att-card-value">{ATTENDANCE_TODAY.early.toLocaleString("ar-EG")}</div>
+                <div className="att-card-note">موظف مسجل خروج قبل موعد الانصراف</div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* 2. Status KPIs (Active, Terminated, Suspended from Payroll, Pending Requests) */}
+        {visiblePanels.status && (
+          <div className="kpis">
+            {STATUS_KPIS.map((k) => (
+              <div key={k.label} className={`kpi ${k.tone}`}>
+                <div className="kpi-top">
+                  <div className="kpi-icon">{k.icon}</div>
+                  <div className="kpi-more">•••</div>
+                </div>
+                <div className="kpi-label">{k.label}</div>
+                <div className="kpi-value">{k.value}</div>
+                <div className="kpi-foot">
+                  <span className={k.tone === "rose" || k.tone === "amber" ? "font-bold text-red-500" : "positive"}>
+                    {k.delta}
+                  </span>
+                  <span>{k.note}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 3. Main Dashboard Grid */}
         <div className="dashboard-grid">
-          <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 5" }}>
-            {editing && <div className="edit-grip">••••</div>}
-            <PanelHead title="أكبر الأقسام من حيث عدد الموظفين" sub="آخر تحديث: منذ 4 دقائق" />
-            <div className="panel-body ranking">
-              {RANKS.map((r, i) => (
-                <div className="rank" key={r.name}>
-                  <div className="rank-no">{String(i + 1).padStart(2, "0")}</div>
-                  <div className="rank-name">{r.name}</div>
-                  <div className="rank-track">
-                    <i style={{ width: `${(r.value / maxRank) * 100}%` }} />
-                  </div>
-                  <b>{r.value.toLocaleString("en-US")}</b>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 4" }}>
-            {editing && <div className="edit-grip">••••</div>}
-            <PanelHead title="التوزيع حسب الجنس" sub="آخر تحديث: منذ 4 دقائق" />
-            <div className="panel-body donut-layout">
-              <div className="donut">
-                <div className="donut-hole">
-                  <span>إجمالي الموظفين</span>
-                  <b>2,350</b>
-                  <small>100%</small>
-                </div>
-              </div>
-              <div className="donut-legend">
-                <div>
-                  <span>
-                    <i className="dot blue" />
-                    ذكور
-                  </span>
-                  <span>
-                    1,520 <em>65%</em>
-                  </span>
-                </div>
-                <div>
-                  <span>
-                    <i className="dot purple" />
-                    إناث
-                  </span>
-                  <span>
-                    830 <em>35%</em>
-                  </span>
-                </div>
-                <hr />
-                <div style={{ display: "block" }}>
-                  <p>الفارق بين الجنسين</p>
-                  <strong>690 موظف</strong>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 3" }}>
-            {editing && <div className="edit-grip">••••</div>}
-            <PanelHead title="توزيع الموظفين حسب المرحلة" sub="آخر تحديث: منذ 4 دقائق" />
-            <div className="panel-body bar-chart">
-              <div className="chart-grid">
-                {[0, 1, 2, 3].map((i) => (
-                  <i key={i} />
-                ))}
-              </div>
-              <div className="bars">
-                {STAGES.map((s) => (
-                  <div className="bar-col" key={s.name}>
-                    <span>{s.value.toLocaleString("en-US")}</span>
-                    <i style={{ height: `${(s.value / maxStage) * 72}%` }} />
-                    <b>{s.name}</b>
+          {/* A. Job Levels Distribution (المستويات الوظيفية) */}
+          {visiblePanels.levels && (
+            <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 4" }}>
+              {editing && <div className="edit-grip">••••</div>}
+              <PanelHead title="توزيع المستويات الوظيفية" sub="التسلسل الهرمي للمسميات الوظيفية" />
+              <div className="panel-body progress-list">
+                {JOB_LEVELS.map((lvl) => (
+                  <div className="prog-item" key={lvl.name}>
+                    <span className="prog-name">{lvl.name}</span>
+                    <div className="prog-track">
+                      <i style={{ width: `${(lvl.value / maxLevel) * 100}%`, background: lvl.color }} />
+                    </div>
+                    <span className="prog-val">{lvl.value.toLocaleString("ar-EG")} <small className="text-muted text-xs">({lvl.pct})</small></span>
                   </div>
                 ))}
               </div>
-            </div>
-          </section>
+            </section>
+          )}
 
-          <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 5" }}>
-            {editing && <div className="edit-grip">••••</div>}
-            <PanelHead title="اتجاه القوى العاملة" sub="آخر تحديث: منذ 4 دقائق" />
-            <div className="panel-body trend-chart">
-              <div className="trend-meta">
-                <span className="positive">+23.7%</span>
-                <small>من بداية الفترة</small>
+          {/* B. Job Categories (الفئات الوظيفية) */}
+          {visiblePanels.categories && (
+            <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 4" }}>
+              {editing && <div className="edit-grip">••••</div>}
+              <PanelHead title="توزيع الفئات الوظيفية" sub="تصنيف الوظائف حسب طبيعة التخصص" />
+              <div className="panel-body progress-list">
+                {JOB_CATEGORIES.map((cat) => (
+                  <div className="prog-item" key={cat.name}>
+                    <span className="prog-name">{cat.name}</span>
+                    <div className="prog-track">
+                      <i style={{ width: `${(cat.value / 1120) * 100}%`, background: cat.color }} />
+                    </div>
+                    <span className="prog-val">{cat.value.toLocaleString("ar-EG")} <small className="text-muted text-xs">({cat.pct})</small></span>
+                  </div>
+                ))}
               </div>
-              <svg viewBox="0 0 400 160" preserveAspectRatio="none" role="img" aria-label="اتجاه القوى العاملة">
-                <g className="lines">
-                  {[20, 55, 90, 125].map((y) => (
-                    <line key={y} x1="0" y1={y} x2="400" y2={y} />
+            </section>
+          )}
+
+          {/* C. Nationalities Distribution & Saudization (الجنسيات) */}
+          {visiblePanels.nationalities && (
+            <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 4" }}>
+              {editing && <div className="edit-grip">••••</div>}
+              <PanelHead title="توزيع الجنسيات ونسبة التوطين" sub="إحصائيات الكوادر الوطنية والوافدة" />
+              <div className="panel-body progress-list">
+                {NATIONALITIES.map((nat) => (
+                  <div className="prog-item" key={nat.name}>
+                    <span className="prog-name">{nat.name}</span>
+                    <div className="prog-track">
+                      <i style={{ width: `${(nat.value / maxNat) * 100}%`, background: nat.color }} />
+                    </div>
+                    <span className="prog-val">{nat.value.toLocaleString("ar-EG")} <small className="text-muted text-xs">({nat.pct})</small></span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* D. Job Sectors Treemap (قطاعات الوظائف الحالية) */}
+          {visiblePanels.sectors && (
+            <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 6" }}>
+              {editing && <div className="edit-grip">••••</div>}
+              <PanelHead title="قطاعات الوظائف الحالية داخل النظام" sub="توزيع القوى العاملة حسب القطاع الرئيسي" />
+              <div className="panel-body treemap" style={{ height: "200px" }}>
+                <div className="tm a">
+                  <b>قطاع التعليم والمدارس</b>
+                  <strong>1,260</strong>
+                  <span>53.6% من إجمالي الموظفين</span>
+                </div>
+                <div className="tm b">
+                  <b>العمليات والمساندة</b>
+                  <strong>510</strong>
+                  <span>21.7%</span>
+                </div>
+                <div className="tm c">
+                  <b>الشؤون الإدارية والمالية</b>
+                  <strong>380 (16.2%)</strong>
+                </div>
+                <div className="tm d">
+                  <b>التحول الرقمي والدعم</b>
+                  <strong>200 (8.5%)</strong>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* E. Pending Requests Hub (الطلبات المعلقة) */}
+          {visiblePanels.requests && (
+            <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 6" }}>
+              {editing && <div className="edit-grip">••••</div>}
+              <PanelHead
+                title="مركز الطلبات والعمليات المعلقة"
+                sub="إجمالي 42 طلب يحتاج إلى موافقة واعتماد"
+                actions={["تحديث ↻"]}
+              />
+              <div className="panel-body requests-wrap">
+                {PENDING_REQUESTS.map((req) => (
+                  <div className="request-card" key={req.type}>
+                    <div className="req-info">
+                      <div className="req-icon">{req.icon}</div>
+                      <div>
+                        <div className="req-title">{req.type}</div>
+                        <div className="req-sub">{req.desc}</div>
+                      </div>
+                    </div>
+                    <div className="req-actions">
+                      <div className="req-count">{req.count} طلب</div>
+                      <button className="req-btn" type="button">
+                        {req.action} ←
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* F. Departments Ranking */}
+          {visiblePanels.departments && (
+            <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 5" }}>
+              {editing && <div className="edit-grip">••••</div>}
+              <PanelHead title="أكبر الأقسام من حيث عدد الموظفين" sub="آخر تحديث: لحظي" />
+              <div className="panel-body ranking">
+                {RANKS.map((r, i) => (
+                  <div className="rank" key={r.name}>
+                    <div className="rank-no">{String(i + 1).padStart(2, "0")}</div>
+                    <div className="rank-name">{r.name}</div>
+                    <div className="rank-track">
+                      <i style={{ width: `${(r.value / maxRank) * 100}%` }} />
+                    </div>
+                    <b>{r.value.toLocaleString("ar-EG")}</b>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* G. Gender Distribution */}
+          {visiblePanels.gender && (
+            <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 4" }}>
+              {editing && <div className="edit-grip">••••</div>}
+              <PanelHead title="التوزيع حسب الجنس" sub="التوازن الوظيفي بين الذكور والإناث" />
+              <div className="panel-body donut-layout">
+                <div className="donut">
+                  <div className="donut-hole">
+                    <span>إجمالي الموظفين</span>
+                    <b>2,350</b>
+                    <small>100%</small>
+                  </div>
+                </div>
+                <div className="donut-legend">
+                  <div>
+                    <span>
+                      <i className="dot blue" />
+                      ذكور
+                    </span>
+                    <span>
+                      1,520 <em>65%</em>
+                    </span>
+                  </div>
+                  <div>
+                    <span>
+                      <i className="dot purple" />
+                      إناث
+                    </span>
+                    <span>
+                      830 <em>35%</em>
+                    </span>
+                  </div>
+                  <hr />
+                  <div style={{ display: "block" }}>
+                    <p>الفارق العددي</p>
+                    <strong>690 موظف</strong>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* H. Stages Bar Chart */}
+          {visiblePanels.stages && (
+            <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 3" }}>
+              {editing && <div className="edit-grip">••••</div>}
+              <PanelHead title="توزيع الموظفين حسب المرحلة" sub="المراحل التعليمية والبرامج" />
+              <div className="panel-body bar-chart">
+                <div className="chart-grid">
+                  {[0, 1, 2, 3].map((i) => (
+                    <i key={i} />
                   ))}
-                </g>
-                <defs>
-                  <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3f8cff" stopOpacity="0.28" />
-                    <stop offset="100%" stopColor="#3f8cff" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M0,130 L80,112 L160,96 L240,68 L320,52 L400,30 L400,160 L0,160 Z"
-                  fill="url(#trendFill)"
-                />
-                <polyline
-                  points="0,130 80,112 160,96 240,68 320,52 400,30"
-                  fill="none"
-                  stroke="#3f8cff"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <div className="months">
-                {["يناير", "مارس", "مايو", "يوليو", "سبتمبر"].map((m) => (
-                  <span key={m}>{m}</span>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 4" }}>
-            {editing && <div className="edit-grip">••••</div>}
-            <PanelHead title="خريطة التوزيع التنظيمي" sub="المقارنة النسبية للأقسام الرئيسية" />
-            <div className="panel-body treemap">
-              <div className="tm a">
-                <b>الخدمات المساندة</b>
-                <strong>1,261</strong>
-                <span>53.7%</span>
-              </div>
-              <div className="tm b">
-                <b>الإدارة العامة</b>
-                <strong>665</strong>
-                <span>28.3%</span>
-              </div>
-              <div className="tm c">
-                <b>الدعم الفني</b>
-                <strong>230</strong>
-              </div>
-              <div className="tm d">
-                <b>إدارة المرحلة</b>
-                <strong>180</strong>
-              </div>
-              <div className="tm e">
-                <b>أخرى</b>
-                <strong>14%</strong>
-              </div>
-            </div>
-          </section>
-
-          <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 3" }}>
-            {editing && <div className="edit-grip">••••</div>}
-            <PanelHead title="مؤشرات تحتاج الانتباه" sub="تحليل تلقائي للبيانات" actions={["⋯"]} />
-            <div className="panel-body insights">
-              <div className="insight-item warn">
-                <span>!</span>
-                <div>
-                  <b>تركيز مرتفع في قسم واحد</b>
-                  <p>الخدمات المساندة تمثل أكثر من نصف القوة العاملة.</p>
+                </div>
+                <div className="bars">
+                  {STAGES.map((s) => (
+                    <div className="bar-col" key={s.name}>
+                      <span>{s.value.toLocaleString("ar-EG")}</span>
+                      <i style={{ height: `${(s.value / maxStage) * 72}%` }} />
+                      <b>{s.name}</b>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="insight-item ok">
-                <span>✓</span>
-                <div>
-                  <b>استقرار التوزيع</b>
-                  <p>لا توجد تغيرات حادة في إجمالي الموظفين هذا الشهر.</p>
-                </div>
-              </div>
-              <div className="insight-item info">
-                <span>↗</span>
-                <div>
-                  <b>نمو المرحلة الثانوية</b>
-                  <p>أعلى زيادة مسجلة مقارنة بالفترة السابقة.</p>
-                </div>
-              </div>
-              <button className="text-btn" type="button">
-                فتح مركز التحليلات ←
-              </button>
-            </div>
-          </section>
+            </section>
+          )}
 
-          <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 12" }}>
-            {editing && <div className="edit-grip">••••</div>}
-            <PanelHead
-              title="تفاصيل الهيكل والموظفين"
-              sub="عرض قابل للبحث والتصفية والتصدير"
-              actions={["⌕", "⇩", "⋯"]}
-            />
-            <div className="panel-body table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>الفرع</th>
-                    <th>القسم</th>
-                    <th>القطاع</th>
-                    <th>المستوى الوظيفي</th>
-                    <th>الجنس</th>
-                    <th>عدد الموظفين</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {ROWS.map((r) => (
-                    <tr key={r.join("-")}>
-                      <td>{r[0]}</td>
-                      <td>{r[1]}</td>
-                      <td>{r[2]}</td>
-                      <td>{r[3]}</td>
-                      <td>
-                        <span className={`tag${r[4] === "أنثى" ? " female" : ""}`}>{r[4]}</span>
-                      </td>
-                      <td>{r[5]}</td>
-                      <td>
-                        <button className="row-more" type="button" aria-label="خيارات">
-                          •••
-                        </button>
-                      </td>
+          {/* I. Workforce Trend Chart */}
+          {visiblePanels.trend && (
+            <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 6" }}>
+              {editing && <div className="edit-grip">••••</div>}
+              <PanelHead title="اتجاه نمو القوى العاملة" sub="التطور العددي خلال الأشهر الماضية" />
+              <div className="panel-body trend-chart">
+                <div className="trend-meta">
+                  <span className="positive">+23.7%</span>
+                  <small>معدل النمو السنوي</small>
+                </div>
+                <svg viewBox="0 0 400 160" preserveAspectRatio="none" role="img" aria-label="اتجاه القوى العاملة">
+                  <g className="lines">
+                    {[20, 55, 90, 125].map((y) => (
+                      <line key={y} x1="0" y1={y} x2="400" y2={y} />
+                    ))}
+                  </g>
+                  <defs>
+                    <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3f8cff" stopOpacity="0.28" />
+                      <stop offset="100%" stopColor="#3f8cff" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d="M0,130 L80,112 L160,96 L240,68 L320,52 L400,30 L400,160 L0,160 Z"
+                    fill="url(#trendFill)"
+                  />
+                  <polyline
+                    points="0,130 80,112 160,96 240,68 320,52 400,30"
+                    fill="none"
+                    stroke="#3f8cff"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <div className="months">
+                  {["يناير", "مارس", "مايو", "يوليو", "سبتمبر"].map((m) => (
+                    <span key={m}>{m}</span>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* J. Smart Insights */}
+          {visiblePanels.insights && (
+            <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 6" }}>
+              {editing && <div className="edit-grip">••••</div>}
+              <PanelHead title="مؤشرات تحتاج الانتباه والمتابعة" sub="تحليل ذكي تلقائي لسجلات الموارد البشرية" actions={["⋯"]} />
+              <div className="panel-body insights">
+                <div className="insight-item warn">
+                  <span>!</span>
+                  <div>
+                    <b>25 موظفاً موقوفين من المسيرات</b>
+                    <p>يتطلب تدقيق سبب الإيقاف لتفادي تأخير إغلاق مسير الرواتب الشهري.</p>
+                  </div>
+                </div>
+                <div className="insight-item ok">
+                  <span>✓</span>
+                  <div>
+                    <b>نسبة حضور متميزة اليوم (93%)</b>
+                    <p>التزام عالي بتسجيل البصمة مع انخفاض ملحوظ في الغياب غير المبرر.</p>
+                  </div>
+                </div>
+                <div className="insight-item info">
+                  <span>↗</span>
+                  <div>
+                    <b>ارتفاع نسبة التوطين إلى 61.7%</b>
+                    <p>تحقيق مستهدفات برنامج نطاقات بامتياز عبر الفروع والأقسام.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* K. Extended Data Table (All New Columns Included) */}
+          {visiblePanels.table && (
+            <section className={`panel${editing ? " edit" : ""}`} style={{ gridColumn: "span 12" }}>
+              {editing && <div className="edit-grip">••••</div>}
+              <PanelHead
+                title="تفاصيل الهيكل وسجلات الموظفين"
+                sub={`عرض تفصيلي موسع (${filteredRows.length} سجلات مطابقة للفلاتر)`}
+                actions={["⌕ بحث", "⇩ تصدير Excel", "⋯ خيارات"]}
+              />
+              <div className="panel-body table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>الفرع</th>
+                      <th>القسم</th>
+                      <th>القطاع</th>
+                      <th>المستوى الوظيفي</th>
+                      <th>الفئة الوظيفية</th>
+                      <th>الجنسية</th>
+                      <th>الجنس</th>
+                      <th>الحالة الوظيفية</th>
+                      <th>حضور اليوم</th>
+                      <th>عدد الموظفين</th>
+                      <th />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                  </thead>
+                  <tbody>
+                    {filteredRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={11} style={{ textAlign: "center", padding: "28px", color: "var(--muted)" }}>
+                          لا توجد سجلات تطابق الفلاتر المحددة. يرجى تعديل الفلاتر أو الضغط على زر إعادة الضبط ↻.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredRows.map((r, i) => (
+                        <tr key={i}>
+                          <td><b>{r.branch}</b></td>
+                          <td>{r.dept}</td>
+                          <td><span className="text-muted">{r.sector}</span></td>
+                          <td>{r.level}</td>
+                          <td>{r.category}</td>
+                          <td>{r.nationality}</td>
+                          <td>
+                            <span className={`tag${r.gender === "أنثى" ? " female" : ""}`}>{r.gender}</span>
+                          </td>
+                          <td>
+                            <span
+                              className={`status-pill ${
+                                r.status === "مفعل"
+                                  ? "active"
+                                  : r.status === "موقوف من المسير"
+                                  ? "suspended"
+                                  : "terminated"
+                              }`}
+                            >
+                              {r.status}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={`att-pill ${
+                                r.attendance === "حاضر"
+                                  ? "present"
+                                  : r.attendance === "غائب"
+                                  ? "absent"
+                                  : r.attendance === "متأخر"
+                                  ? "late"
+                                  : "early"
+                              }`}
+                            >
+                              {r.attendance}
+                            </span>
+                          </td>
+                          <td><b>{r.count}</b></td>
+                          <td>
+                            <button className="row-more" type="button" aria-label="خيارات">
+                              •••
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
         </div>
 
-        <footer>HRMS Enterprise Analytics · لوحة قابلة للتخصيص والحفظ حسب المستخدم والصلاحية</footer>
+        <footer>
+          HRMS Enterprise Analytics · تم تطوير اللوحة لدعم الحضور اللحظي، حالات الموظفين، قطاعات الوظائف، ونسب التوطين.
+        </footer>
       </main>
     </div>
   );
