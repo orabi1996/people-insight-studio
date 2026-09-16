@@ -1,16 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
+import {
+  Users,
+  LogOut,
+  Globe,
+  Bell,
+  Search,
+  Settings,
+  Sliders,
+  List,
+  Megaphone,
+  FileText,
+  ClipboardCheck,
+  TrendingUp,
+  Shield,
+  LayoutGrid,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "لوحة الموارد البشرية التنفيذية | الحلول الخبرية" },
+      { title: "الموارد البشرية | لوحة التحكم التنفيذية" },
       {
         name: "description",
         content:
-          "لوحة قيادة تحليلية متقدمة للموارد البشرية: إحصائيات القوى العاملة، حالات الموظفين، الحضور والانصراف اليومي، وتوزيع المستويات والقطاعات والجنسيات.",
+          "نظام إدارة الموارد البشرية: إحصائيات القوى العاملة، حالات الموظفين، الحضور والانصراف اليومي، وتوزيع المستويات والقطاعات والجنسيات.",
       },
-      { property: "og:title", content: "لوحة الموارد البشرية التنفيذية" },
+      { property: "og:title", content: "الموارد البشرية" },
       {
         property: "og:description",
         content: "رؤية موحدة وشاملة للحضور، الأقسام، المستويات الوظيفية، القطاعات، والطلبات المعلقة.",
@@ -22,7 +38,18 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const NAV = ["لوحة القيادة", "الموظفون", "الحضور", "الهيكل التنظيمي", "التقارير"];
+// Navigation items matching the reference design
+const SUB_NAV = [
+  { id: "settings", label: "إعدادات النظام", icon: Settings },
+  { id: "personnel_ops", label: "عمليات شئون الموظفين", icon: Sliders },
+  { id: "regulations", label: "اللوائح", icon: List },
+  { id: "requests", label: "الطلبات", icon: Megaphone },
+  { id: "reports", label: "التقارير", icon: FileText },
+  { id: "approvals", label: "طلبات الاعتماد", icon: ClipboardCheck },
+  { id: "performance", label: "تقييم الأداء", icon: TrendingUp },
+  { id: "permissions", label: "الصلاحيات", icon: Shield },
+  { id: "tasks", label: "إدارة المهام", icon: LayoutGrid },
+];
 
 // Attendance Today Data (Explicit Employee Counts)
 const ATTENDANCE_TODAY = {
@@ -337,7 +364,8 @@ function PanelHead({ title, sub, actions }: { title: string; sub: string; action
 }
 
 function Index() {
-  const [tab, setTab] = useState(NAV[0]);
+  const [activeNav, setActiveNav] = useState("tasks");
+  const [globalSearch, setGlobalSearch] = useState("");
   const [studioTab, setStudioTab] = useState<"widgets" | "layers" | "settings">("widgets");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -391,11 +419,25 @@ function Index() {
       status: "الكل",
       attendance: "الكل",
     });
+    setGlobalSearch("");
   };
 
   // Filtered rows for the table
   const filteredRows = useMemo(() => {
     return INITIAL_ROWS.filter((row) => {
+      if (globalSearch.trim()) {
+        const query = globalSearch.trim().toLowerCase();
+        const matches =
+          row.branch.toLowerCase().includes(query) ||
+          row.dept.toLowerCase().includes(query) ||
+          row.sector.toLowerCase().includes(query) ||
+          row.level.toLowerCase().includes(query) ||
+          row.category.toLowerCase().includes(query) ||
+          row.nationality.toLowerCase().includes(query) ||
+          row.status.toLowerCase().includes(query) ||
+          row.attendance.toLowerCase().includes(query);
+        if (!matches) return false;
+      }
       if (selectedFilters.branch !== "الكل" && row.branch !== selectedFilters.branch) return false;
       if (selectedFilters.dept !== "الكل" && row.dept !== selectedFilters.dept) return false;
       if (selectedFilters.sector !== "الكل" && row.sector !== selectedFilters.sector) return false;
@@ -406,7 +448,7 @@ function Index() {
       if (selectedFilters.attendance !== "الكل" && row.attendance !== selectedFilters.attendance) return false;
       return true;
     });
-  }, [selectedFilters]);
+  }, [selectedFilters, globalSearch]);
 
   const activeFiltersCount = useMemo(() => {
     return Object.values(selectedFilters).filter((v) => v !== "الكل").length;
@@ -419,35 +461,93 @@ function Index() {
 
   return (
     <div className={`app${dark ? " hrms-dark" : ""}`} dir="rtl" lang="ar">
-      {/* Top Header */}
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-mark">HR</div>
-          <div>
-            <strong>الحلول الخبرية</strong>
-            <span>نظام إدارة الموارد البشرية التنفيذي</span>
+      {/* Top Two-Tier Header */}
+      <header className="app-header">
+        {/* Tier 1: White Utility Bar */}
+        <div className="header-top">
+          {/* Right: Brand Title & Icon */}
+          <div className="brand-section">
+            <div className="brand-avatar">
+              <Users size={20} strokeWidth={2.2} />
+            </div>
+            <span className="brand-title">الموارد البشرية</span>
+          </div>
+
+          {/* Left: User Info, Version, Notifications, Logout */}
+          <div className="header-user-meta">
+            <button
+              type="button"
+              className="logout-btn"
+              title="تسجيل الخروج"
+              aria-label="تسجيل الخروج"
+              onClick={() => alert("تم تسجيل الخروج")}
+            >
+              <LogOut size={18} strokeWidth={2.2} />
+            </button>
+            <div className="divider-vert" />
+            <span className="user-greeting">مرحبا ، admin@admin.com</span>
+            <div className="version-pill">
+              <span>🚀</span>
+              <span>V1.0.3</span>
+            </div>
+            <button
+              type="button"
+              className="meta-icon-btn"
+              title="إشعارات النظام"
+              aria-label="إشعارات النظام"
+            >
+              <Bell size={18} />
+              <span className="meta-badge">3</span>
+            </button>
+            <button
+              type="button"
+              className="meta-icon-btn"
+              title="التنبيهات"
+              aria-label="التنبيهات"
+            >
+              <Bell size={18} />
+            </button>
+            <button
+              type="button"
+              className="meta-icon-btn"
+              title="تغيير اللغة"
+              aria-label="تغيير اللغة"
+            >
+              <Globe size={18} />
+            </button>
           </div>
         </div>
-        <nav>
-          {NAV.map((n) => (
-            <button key={n} type="button" className={n === tab ? "active" : ""} onClick={() => setTab(n)}>
-              {n}
-            </button>
-          ))}
-        </nav>
-        <div className="top-actions">
-          <button className="round" type="button" aria-label="بحث">
-            ⌕
-          </button>
-          <button className="round" type="button" aria-label="إشعارات">
-            ♢
-          </button>
-          <div className="user">
-            <div className="avatar">AM</div>
-            <div>
-              <b>أحمد محمد</b>
-              <span>مدير الموارد البشرية</span>
-            </div>
+
+        {/* Tier 2: Dark Navy Navigation Bar */}
+        <div className="header-nav-bar">
+          {/* Right side: Navigation Items */}
+          <div className="nav-links">
+            {SUB_NAV.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeNav === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`nav-link-btn${isActive ? " active" : ""}`}
+                  onClick={() => setActiveNav(item.id)}
+                >
+                  <Icon size={14} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Left side: Search Box */}
+          <div className="nav-search">
+            <Search size={14} className="search-icon" />
+            <input
+              type="text"
+              value={globalSearch}
+              onChange={(e) => setGlobalSearch(e.target.value)}
+              placeholder="اسم، هوية، رقم وظيفي..."
+            />
           </div>
         </div>
       </header>
